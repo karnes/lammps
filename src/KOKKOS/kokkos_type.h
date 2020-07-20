@@ -22,7 +22,7 @@
 #include <Kokkos_Vectorization.hpp>
 #include <Kokkos_ScatterView.hpp>
 
-enum{FULL=1u,HALFTHREAD=2u,HALF=4u,N2=8u};
+enum{FULL=1u,HALFTHREAD=2u,HALF=4u};
 
 #if defined(KOKKOS_ENABLE_CXX11)
 #undef ISFINITE
@@ -272,7 +272,7 @@ template<typename T1, typename T2>
 class ScatterViewHelper<Kokkos::Experimental::ScatterDuplicated,T1,T2> {
 public:
   KOKKOS_INLINE_FUNCTION
-  static T1 get(const T1 &dup, const T2 &nondup) {
+  static T1 get(const T1 &dup, const T2 & /*nondup*/) {
     return dup;
   }
 };
@@ -281,7 +281,7 @@ template<typename T1, typename T2>
 class ScatterViewHelper<Kokkos::Experimental::ScatterNonDuplicated,T1,T2> {
 public:
   KOKKOS_INLINE_FUNCTION
-  static T2 get(const T1 &dup, const T2 &nondup) {
+  static T2 get(const T1 & /*dup*/, const T2 &nondup) {
     return nondup;
   }
 };
@@ -1025,9 +1025,62 @@ struct params_lj_coul {
   KOKKOS_INLINE_FUNCTION
   params_lj_coul(){cut_ljsq=0;cut_coulsq=0;lj1=0;lj2=0;lj3=0;lj4=0;offset=0;};
   KOKKOS_INLINE_FUNCTION
-  params_lj_coul(int i){cut_ljsq=0;cut_coulsq=0;lj1=0;lj2=0;lj3=0;lj4=0;offset=0;};
+  params_lj_coul(int /*i*/){cut_ljsq=0;cut_coulsq=0;lj1=0;lj2=0;lj3=0;lj4=0;offset=0;};
   F_FLOAT cut_ljsq,cut_coulsq,lj1,lj2,lj3,lj4,offset;
 };
+
+// Pair SNAP
+
+typedef double SNAreal;
+
+//typedef struct { SNAreal re, im; } SNAcomplex;
+template <typename real>
+struct alignas(2*sizeof(real)) SNAComplex
+{
+  real re,im;
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex() = default;
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex(real re)
+   : re(re), im(static_cast<real>(0.)) { ; }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex(real re, real im)
+   : re(re), im(im) { ; }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex(const SNAComplex& other)
+   : re(other.re), im(other.im) { ; }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex& operator=(const SNAComplex& other) {
+    re = other.re; im = other.im;
+    return *this;
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex(SNAComplex&& other)
+   : re(other.re), im(other.im) { ; }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex& operator=(SNAComplex&& other) {
+    re = other.re; im = other.im;
+    return *this;
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex operator+(SNAComplex const& other) {
+    return SNAComplex(re + other.re, im + other.im);
+  }
+
+  KOKKOS_FORCEINLINE_FUNCTION SNAComplex& operator+=(SNAComplex const& other) {
+    re += other.re; im += other.im;
+    return *this;
+  }
+
+};
+
+template <typename real>
+KOKKOS_FORCEINLINE_FUNCTION SNAComplex<real> operator*(const real& r, const SNAComplex<real>& self) {
+  return SNAComplex<real>(r*self.re, r*self.im);
+}
+
+typedef SNAComplex<SNAreal> SNAcomplex;
+
 
 #if defined(KOKKOS_ENABLE_CXX11)
 #undef ISFINITE

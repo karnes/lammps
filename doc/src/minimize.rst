@@ -64,7 +64,7 @@ performed using a line search algorithm.  The line search typically
 evaluates forces and energies several times to set new coordinates.
 Currently, a backtracking algorithm is used which may not be optimal
 in terms of the number of force evaluations performed, but appears to
-be more robust than previous line searches we've tried.  The
+be more robust than previous line searches we have tried.  The
 backtracking method is described in Nocedal and Wright's Numerical
 Optimization (Procedure 3.1 on p 41).
 
@@ -95,7 +95,7 @@ coordinates:
 
 where the first term is the sum of all non-bonded :doc:`pairwise
 interactions <pair_style>` including :doc:`long-range Coulombic
-interactions <kspace_style>`, the 2nd through 5th terms are :doc:`bond
+interactions <kspace_style>`, the second through fifth terms are :doc:`bond
 <bond_style>`, :doc:`angle <angle_style>`, :doc:`dihedral
 <dihedral_style>`, and :doc:`improper <improper_style>` interactions
 respectively, and the last term is energy due to :doc:`fixes <fix>`
@@ -231,7 +231,7 @@ so that its energy is 0.0 at the cutoff via the
 :doc:`pair_modify <pair_modify>` command.  See the doc pages for
 individual :doc:`pair styles <pair_style>` for details.  Note that
 Coulombic potentials always have a cutoff, unless versions with a
-long-range component are used (e.g. :doc:`pair_style lj/cut/coul/long <pair_lj>`).  The CHARMM potentials go to 0.0 at
+long-range component are used (e.g. :doc:`pair_style lj/cut/coul/long <pair_lj_cut_coul>`).  The CHARMM potentials go to 0.0 at
 the cutoff (e.g. :doc:`pair_style lj/charmm/coul/charmm <pair_charmm>`),
 as do the GROMACS potentials (e.g. :doc:`pair_style lj/gromacs <pair_gromacs>`).
 
