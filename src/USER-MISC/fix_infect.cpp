@@ -116,7 +116,7 @@ FixInfect::~FixInfect() // jjk address this much later
 {
   // unregister callbacks to this fix from Atom class
 
-  atom->delete_callback(id,0);
+//  atom->delete_callback(id,0);
 
 
   // delete locally stored arrays
@@ -126,7 +126,7 @@ FixInfect::~FixInfect() // jjk address this much later
 //  memory->destroy(finalpartner);
 //  memory->destroy(distsq);
 //  memory->destroy(created);
-  delete [] copy;
+//  delete [] copy;
 }
 
 /* ---------------------------------------------------------------------- */

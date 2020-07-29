@@ -98,7 +98,7 @@ FixSticky::~FixSticky() // jjk address this much later
 {
   // unregister callbacks to this fix from Atom class
 
-  atom->delete_callback(id,0);
+//  atom->delete_callback(id,0);
 
   // delete locally stored arrays
 
