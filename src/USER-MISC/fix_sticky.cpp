@@ -72,12 +72,16 @@ FixSticky::FixSticky(LAMMPS *lmp, int narg, char **arg) :
 
 //  MPI_Comm_rank(world,&me); //jjk not sure if needed
 
-  nevery = force->inumeric(FLERR,arg[3]);
+//  nevery = force->inumeric(FLERR,arg[3]);
+  nevery = utils::inumeric(FLERR,arg[3],false,lmp);
   if (nevery <= 0) error->all(FLERR,"Illegal fix sticky command");
 
-  iatomtype = force->inumeric(FLERR,arg[4]);
-  jatomtype = force->inumeric(FLERR,arg[5]);
+//  iatomtype = force->inumeric(FLERR,arg[4]);
+  iatomtype = utils::inumeric(FLERR,arg[4],false,lmp);
+//  jatomtype = force->inumeric(FLERR,arg[5]);
+  jatomtype = utils::inumeric(FLERR,arg[5],false,lmp);
 //  double cutoff = force->numeric(FLERR,arg[6]);
+  double cutoff = utils::numeric(FLERR,arg[6],false,lmp);
   cutoff = atof(arg[6]);
   if (cutoff < 0.0) error->all(FLERR,"Illegal fix sticky command");
 
