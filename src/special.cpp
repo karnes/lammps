@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
+   https://lammps.sandia.gov/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -12,18 +12,16 @@
 ------------------------------------------------------------------------- */
 
 #include "special.h"
-#include <mpi.h>
-#include "atom.h"
-#include "atom_vec.h"
-#include "force.h"
-#include "comm.h"
-#include "modify.h"
-#include "fix.h"
+
 #include "accelerator_kokkos.h"  // IWYU pragma: export
+#include "atom.h"
 #include "atom_masks.h"
+#include "atom_vec.h"
+#include "comm.h"
+#include "fix.h"
+#include "force.h"
 #include "memory.h"
-#include "utils.h"
-#include "fmt/format.h"
+#include "modify.h"
 
 using namespace LAMMPS_NS;
 
@@ -36,7 +34,7 @@ Special::Special(LAMMPS *lmp) : Pointers(lmp)
   MPI_Comm_rank(world,&me);
   MPI_Comm_size(world,&nprocs);
 
-  onetwo = onethree = onefour = NULL;
+  onetwo = onethree = onefour = nullptr;
 }
 
 /* ---------------------------------------------------------------------- */
@@ -59,14 +57,15 @@ void Special::build()
   MPI_Barrier(world);
   double time1 = MPI_Wtime();
 
-  if (me == 0 && screen) {
+  if (me == 0) {
     const double * const special_lj   = force->special_lj;
     const double * const special_coul = force->special_coul;
-    fmt::print(screen,"Finding 1-2 1-3 1-4 neighbors ...\n"
-               "  special bond factors lj:    {:<8} {:<8} {:<8}\n"
-               "  special bond factors coul:  {:<8} {:<8} {:<8}\n",
-               special_lj[1],special_lj[2],special_lj[3],
-               special_coul[1],special_coul[2],special_coul[3]);
+    auto mesg = fmt::format("Finding 1-2 1-3 1-4 neighbors ...\n"
+                            "  special bond factors lj:    {:<8} {:<8} {:<8}\n"
+                            "  special bond factors coul:  {:<8} {:<8} {:<8}\n",
+                            special_lj[1],special_lj[2],special_lj[3],
+                            special_coul[1],special_coul[2],special_coul[3]);
+    utils::logmesg(lmp,mesg);
   }
 
   // initialize nspecial counters to 0

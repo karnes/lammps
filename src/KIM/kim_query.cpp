@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
+   https://lammps.sandia.gov/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -56,24 +56,22 @@
 ------------------------------------------------------------------------- */
 
 #include "kim_query.h"
-#include "fix_store_kim.h"
-#include <mpi.h>
-#include <cstring>
-#include <string>
-#include <sstream>
+
 #include "comm.h"
 #include "error.h"
+#include "fix_store_kim.h"
+#include "info.h"
 #include "input.h"
 #include "modify.h"
 #include "variable.h"
 #include "version.h"
-#include "info.h"
-#include "fmt/format.h"
+
+#include <cstring>
+#include <sstream>
 
 #if defined(LMP_KIM_CURL)
 #include <sys/types.h>
 #include <curl/curl.h>
-#include <cstdlib>
 #endif
 
 using namespace LAMMPS_NS;
@@ -128,8 +126,7 @@ void KimQuery::command(int narg, char **arg)
     narg--;
   }
   function = arg[1];
-  for (int i = 2; i < narg; ++i)
-  {
+  for (int i = 2; i < narg; ++i) {
     if (0 == strncmp("model=",arg[i], 6)) {
       error->all(FLERR,"Illegal 'model' key in kim_query command");
     }
@@ -269,8 +266,7 @@ char *do_query(char *qfunction, char * model_name, int narg, char **arg,
 
       {
         char *env_c = std::getenv("CURL_CA_BUNDLE");
-        if (env_c)
-        {
+        if (env_c) {
           // Certificate Verification
           // by specifying your own CA cert path. Set the environment variable
           // CURL_CA_BUNDLE to the path of your choice.
@@ -316,8 +312,7 @@ char *do_query(char *qfunction, char * model_name, int narg, char **arg,
       value[len] = '\0';
       if (0 == strcmp(value+1, "")) {
         strcpy(retval,"EMPTY");
-      }
-      else
+      } else
         strcpy(retval,value+1);
     } else {
       retval = new char[len+2];
@@ -343,8 +338,8 @@ char *do_query(char *qfunction, char * model_name, int narg, char **arg,
 
 /* ---------------------------------------------------------------------- */
 
-void KimQuery::echo_var_assign(const std::string & name,
-                               const std::string & value) const
+void KimQuery::echo_var_assign(const std::string &name,
+                               const std::string &value) const
 {
   input->write_echo(fmt::format("variable {} string {}\n",name,value));
 }

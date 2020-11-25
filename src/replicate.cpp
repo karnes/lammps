@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
+   https://lammps.sandia.gov/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -12,19 +12,17 @@
 ------------------------------------------------------------------------- */
 
 #include "replicate.h"
-#include <mpi.h>
-#include <cstring>
+
+#include "accelerator_kokkos.h"
 #include "atom.h"
 #include "atom_vec.h"
-#include "force.h"
-#include "domain.h"
 #include "comm.h"
-#include "special.h"
-#include "accelerator_kokkos.h"
-#include "memory.h"
+#include "domain.h"
 #include "error.h"
-#include "utils.h"
-#include "fmt/format.h"
+#include "memory.h"
+#include "special.h"
+
+#include <cstring>
 
 using namespace LAMMPS_NS;
 
@@ -45,16 +43,19 @@ void Replicate::command(int narg, char **arg)
     error->all(FLERR,"Replicate command before simulation box is defined");
   if (narg < 3 || narg > 4) error->all(FLERR,"Illegal replicate command");
 
+  if (atom->molecular == Atom::TEMPLATE)
+    error->all(FLERR,"Cannot use replicate command with atom style template");
+
   int me = comm->me;
   int nprocs = comm->nprocs;
 
-  if (me == 0 && screen) fprintf(screen,"Replicating atoms ...\n");
+  if (me == 0) utils::logmesg(lmp,"Replicating atoms ...\n");
 
   // nrep = total # of replications
 
-  int nx = force->inumeric(FLERR,arg[0]);
-  int ny = force->inumeric(FLERR,arg[1]);
-  int nz = force->inumeric(FLERR,arg[2]);
+  int nx = utils::inumeric(FLERR,arg[0],false,lmp);
+  int ny = utils::inumeric(FLERR,arg[1],false,lmp);
+  int nz = utils::inumeric(FLERR,arg[2],false,lmp);
   int nrep = nx*ny*nz;
 
   int bbox_flag = 0;
@@ -156,7 +157,7 @@ void Replicate::command(int narg, char **arg)
   // also set atomKK for Kokkos version of Atom class
 
   Atom *old = atom;
-  atomKK = NULL;
+  atomKK = nullptr;
   if (lmp->kokkos) atom = atomKK = new AtomKokkos(lmp);
   else atom = new Atom(lmp);
 
@@ -349,12 +350,14 @@ void Replicate::command(int narg, char **arg)
     int size_buf_all = 0;
     MPI_Allreduce(&n, &size_buf_all, 1, MPI_INT, MPI_SUM, world);
 
-    if (me == 0 && screen) {
-      fmt::print(screen,"  bounding box image = ({} {} {}) to ({} {} {})\n",
-              _imagelo[0],_imagelo[1],_imagelo[2],
-              _imagehi[0],_imagehi[1],_imagehi[2]);
-      fmt::print(screen,"  bounding box extra memory = {:.2f} MB\n",
-              (double)size_buf_all*sizeof(double)/1024/1024);
+    if (me == 0) {
+      auto mesg = fmt::format("  bounding box image = ({} {} {}) "
+                              "to ({} {} {})\n",
+                              _imagelo[0],_imagelo[1],_imagelo[2],
+                              _imagehi[0],_imagehi[1],_imagehi[2]);
+      mesg += fmt::format("  bounding box extra memory = {:.2f} MB\n",
+                          (double)size_buf_all*sizeof(double)/1024/1024);
+      utils::logmesg(lmp,mesg);
     }
 
     // rnk offsets
@@ -591,7 +594,7 @@ void Replicate::command(int narg, char **arg)
                 if (atom->molecular) {
                   if (atom->molecule[i] > 0)
                     atom->molecule[i] += mol_offset;
-                  if (atom->molecular == 1) {
+                  if (atom->molecular == Atom::MOLECULAR) {
                     if (atom->avec->bonds_allow)
                       for (j = 0; j < atom->num_bond[i]; j++)
                         atom->bond_atom[i][j] += atom_offset;
@@ -632,11 +635,10 @@ void Replicate::command(int narg, char **arg)
     int sum = 0;
     MPI_Reduce(&num_replicas_added, &sum, 1, MPI_INT, MPI_SUM, 0, world);
     double avg = (double) sum / nprocs;
-    if (me == 0 && screen)
-      fprintf(screen,"  average # of replicas added to proc = %.2f "
-              "out of %i (%.2f %%)\n",
-              avg,nx*ny*nz,avg/(nx*ny*nz)*100.0);
-
+    if (me == 0)
+      utils::logmesg(lmp,fmt::format("  average # of replicas added to proc ="
+                                     " {:.2f} out of {} ({:.2f}%)\n",
+                                     avg,nx*ny*nz,avg/(nx*ny*nz)*100.0));
   } else {
 
     for (int iproc = 0; iproc < nprocs; iproc++) {
@@ -694,7 +696,7 @@ void Replicate::command(int narg, char **arg)
                 if (atom->molecular) {
                   if (atom->molecule[i] > 0)
                     atom->molecule[i] += mol_offset;
-                  if (atom->molecular == 1) {
+                  if (atom->molecular == Atom::MOLECULAR) {
                     if (atom->avec->bonds_allow)
                       for (j = 0; j < atom->num_bond[i]; j++)
                         atom->bond_atom[i][j] += atom_offset;
@@ -767,14 +769,14 @@ void Replicate::command(int narg, char **arg)
 
   // create global mapping of atoms
 
-  if (atom->map_style) {
+  if (atom->map_style != Atom::MAP_NONE) {
     atom->map_init();
     atom->map_set();
   }
 
   // create special bond lists for molecular systems
 
-  if (atom->molecular == 1) {
+  if (atom->molecular == Atom::MOLECULAR) {
     Special special(lmp);
     special.build();
   }
