@@ -158,6 +158,7 @@ PairKIM::~PairKIM()
     memory->destroy(setflag);
     memory->destroy(cutsq);
     delete [] lmps_map_species_to_unique;
+    lmps_map_species_to_unique = nullptr;
   }
 
   // clean up neighborlist pointers
@@ -304,15 +305,6 @@ void PairKIM::settings(int narg, char **arg)
   // first time called will do nothing...
   kim_free();
 
-  // make sure things are allocated
-  if (allocated != 1) allocate();
-
-  // clear setflag to ensure coeff() is called after settings()
-  int n = atom->ntypes;
-  for (int i = 1; i <= n; i++)
-    for (int j = i; j <= n; j++)
-      setflag[i][j] = 0;
-
   // set lmps_* bool flags
   set_lmps_flags();
 
@@ -429,7 +421,7 @@ void PairKIM::coeff(int narg, char **arg)
     } else {
       std::string msg("create_kim_particle_codes: symbol not found: ");
       msg += lmps_unique_elements[i];
-      error->all(FLERR, msg.c_str());
+      error->all(FLERR, msg);
     }
   }
   // Set the new values for PM parameters
@@ -441,7 +433,7 @@ void PairKIM::coeff(int narg, char **arg)
     if (!numberOfParameters) {
       std::string msg("Incorrect args for pair coefficients \n");
       msg += "This model has No mutable parameters.";
-      error->all(FLERR, msg.c_str());
+      error->all(FLERR, msg);
     }
 
     int kimerror;
@@ -477,7 +469,7 @@ void PairKIM::coeff(int narg, char **arg)
         msg += "This Model does not have the requested '";
         msg += paramname;
         msg += "' parameter.";
-        error->all(FLERR, msg.c_str());
+        error->all(FLERR, msg);
       }
 
       // Get the index_range for the requested parameter
@@ -493,7 +485,7 @@ void PairKIM::coeff(int narg, char **arg)
           msg += "Expected integer parameter(s) instead of '";
           msg += argtostr;
           msg += "' in index_range.";
-          error->all(FLERR, msg.c_str());
+          error->all(FLERR, msg);
         }
 
         std::string::size_type npos = argtostr.find(':');
@@ -510,7 +502,7 @@ void PairKIM::coeff(int narg, char **arg)
             msg += "' parameter with extent of '";
             msg += SNUM(extent);
             msg += "' .";
-            error->all(FLERR, msg.c_str());
+            error->all(FLERR, msg);
           }
         } else {
           std::stringstream str(argtostr);
@@ -522,7 +514,7 @@ void PairKIM::coeff(int narg, char **arg)
             msg += "' parameter with extent of '";
             msg += SNUM(extent);
             msg += "' .";
-            error->all(FLERR, msg.c_str());
+            error->all(FLERR, msg);
           }
           nubound = nlbound;
         }
@@ -530,7 +522,7 @@ void PairKIM::coeff(int narg, char **arg)
         std::string msg =
         "Wrong number of arguments for pair coefficients.\n";
         msg += "Index range after parameter name is mandatory.";
-        error->all(FLERR, msg.c_str());
+        error->all(FLERR, msg);
       }
 
       // Parameter values
@@ -561,7 +553,7 @@ void PairKIM::coeff(int narg, char **arg)
         msg += "' values are requested for '";
         msg += paramname;
         msg += "' parameter.";
-        error->all(FLERR, msg.c_str());
+        error->all(FLERR, msg);
       }
     }
 
@@ -792,7 +784,7 @@ int PairKIM::get_neigh(void const * const dataObject,
                        int const ** const neighborsOfParticle)
 {
   PairKIM const * const Model
-    = reinterpret_cast<PairKIM const * const>(dataObject);
+    = reinterpret_cast<PairKIM const *>(dataObject);
 
   if (numberOfNeighborLists != Model->kim_number_of_neighbor_lists)
     return true;
@@ -926,7 +918,7 @@ void PairKIM::set_argument_pointers()
         kimerror = kimerror ||
         KIM_ComputeArguments_SetArgumentPointerDouble(
           pargs,KIM_COMPUTE_ARGUMENT_NAME_partialEnergy,
-          reinterpret_cast<double * const>(NULL));
+          static_cast<double *>(NULL));
       }
   }
 
@@ -947,7 +939,7 @@ void PairKIM::set_argument_pointers()
     kimerror = kimerror || KIM_ComputeArguments_SetArgumentPointerDouble(
       pargs,
       KIM_COMPUTE_ARGUMENT_NAME_partialParticleEnergy,
-      reinterpret_cast<double * const>(NULL));
+      static_cast<double *>(NULL));
   } else if (KIM_SupportStatus_NotEqual(kim_model_support_for_particleEnergy,
                                       KIM_SUPPORT_STATUS_notSupported)) {
     kimerror = kimerror || KIM_ComputeArguments_SetArgumentPointerDouble(
@@ -960,7 +952,7 @@ void PairKIM::set_argument_pointers()
     kimerror = kimerror || KIM_ComputeArguments_SetArgumentPointerDouble(
       pargs,
       KIM_COMPUTE_ARGUMENT_NAME_partialForces,
-      reinterpret_cast<double * const>(NULL));
+      static_cast<double *>(NULL));
   } else {
     kimerror = kimerror || KIM_ComputeArguments_SetArgumentPointerDouble(
         pargs, KIM_COMPUTE_ARGUMENT_NAME_partialForces, &(atom->f[0][0]));
@@ -983,7 +975,7 @@ void PairKIM::set_argument_pointers()
     kimerror = kimerror || KIM_ComputeArguments_SetArgumentPointerDouble(
       pargs,
       KIM_COMPUTE_ARGUMENT_NAME_partialParticleVirial,
-      reinterpret_cast<double * const>(NULL));
+      static_cast<double *>(NULL));
   } else if (KIM_SupportStatus_NotEqual(kim_model_support_for_particleVirial,
                                         KIM_SUPPORT_STATUS_notSupported)) {
     kimerror = kimerror || KIM_ComputeArguments_SetArgumentPointerDouble(
@@ -1122,7 +1114,7 @@ void PairKIM::set_kim_model_has_flags()
                                      KIM_SUPPORT_STATUS_required)) {
       std::string msg("KIM Model requires unsupported compute argument: ");
       msg += KIM_ComputeArgumentName_ToString(computeArgumentName);
-      error->all(FLERR, msg.c_str());
+      error->all(FLERR, msg);
     }
   }
 
