@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
+   https://lammps.sandia.gov/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -130,8 +130,9 @@ LAMMPS *init_lammps(int argc, char **argv, const TestConfig &cfg, const bool new
     }
 
     command("run 0 post no");
+    command("variable write_data_pair index ii");
     command("write_restart " + cfg.basename + ".restart");
-    command("write_data " + cfg.basename + ".data");
+    command("write_data " + cfg.basename + ".data pair ${write_data_pair}");
     command("write_coeff " + cfg.basename + "-coeffs.in");
 
     return lmp;
@@ -238,7 +239,7 @@ void generate_yaml_file(const char *outfile, const TestConfig &config)
     YamlWriter writer(outfile);
 
     // lammps_version
-    writer.emit("lammps_version", lmp->universe->version);
+    writer.emit("lammps_version", lmp->version);
 
     // date_generated
     std::time_t now = time(NULL);
@@ -650,6 +651,14 @@ TEST(PairStyle, omp)
     EXPECT_THAT(output, StartsWith("LAMMPS ("));
     EXPECT_THAT(output, HasSubstr("Loop time"));
 
+    if (utils::strmatch(test_config.pair_style, "^dpd")) {
+        std::cerr << "Skipping pair style " << lmp->force->pair_style << "\n";
+        if (!verbose) ::testing::internal::CaptureStdout();
+        cleanup_lammps(lmp, test_config);
+        if (!verbose) ::testing::internal::GetCapturedStdout();
+        GTEST_SKIP();
+    }
+
     // abort if running in parallel and not all atoms are local
     const int nlocal = lmp->atom->nlocal;
     ASSERT_EQ(lmp->atom->natoms, nlocal);
@@ -822,11 +831,11 @@ TEST(PairStyle, intel)
         GTEST_SKIP();
     }
 
-    if (test_config.pair_style == "rebo") {
+    if ((test_config.pair_style == "rebo") || utils::strmatch(test_config.pair_style, "^dpd")) {
+        std::cerr << "Skipping pair style " << lmp->force->pair_style << "\n";
         if (!verbose) ::testing::internal::CaptureStdout();
         cleanup_lammps(lmp, test_config);
         if (!verbose) ::testing::internal::GetCapturedStdout();
-        std::cerr << "Skipping pair style rebo/intel\n";
         GTEST_SKIP();
     }
 
@@ -1073,7 +1082,7 @@ TEST(PairStyle, single)
     // gather some information and skip if unsupported
     int ntypes    = lmp->atom->ntypes;
     int molecular = lmp->atom->molecular;
-    if (molecular > 1) {
+    if (molecular > Atom::MOLECULAR) {
         std::cerr << "Only atomic and simple molecular atom styles are supported\n";
         if (!verbose) ::testing::internal::CaptureStdout();
         cleanup_lammps(lmp, test_config);
@@ -1101,7 +1110,11 @@ TEST(PairStyle, single)
 
     // The single function in EAM is different from what we assume
     // here, therefore we have to skip testing those pair styles.
-    if ((test_config.pair_style.substr(0, 3) == "eam") ||
+    // Pair styles colloid  and yukawa/colloid are also not compatible with this single tester
+    if ((test_config.pair_style.substr(0, 7) == "colloid") ||
+        (test_config.pair_style.substr(0, 14) == "yukawa/colloid") ||
+        (test_config.pair_style.substr(0, 3) == "dpd") ||
+        (test_config.pair_style.substr(0, 3) == "eam") ||
         ((test_config.pair_style.substr(0, 6) == "hybrid") &&
          (test_config.pair_style.find("eam") != std::string::npos))) {
         if (!verbose) ::testing::internal::CaptureStdout();
@@ -1133,7 +1146,7 @@ TEST(PairStyle, single)
     command("boundary p p p");
     command("newton ${newton_pair} ${newton_bond}");
 
-    if (molecular) {
+    if (molecular == Atom::MOLECULAR) {
         command("special_bonds lj/coul "
                 "${bond_factor} ${angle_factor} ${dihedral_factor}");
     }
@@ -1142,7 +1155,7 @@ TEST(PairStyle, single)
     command("region box block -10.0 10.0 -10.0 10.0 -10.0 10.0 units box");
 
     auto cmd = fmt::format("create_box {} box", ntypes);
-    if (molecular) {
+    if (molecular == Atom::MOLECULAR) {
         cmd += " bond/types 1"
                " extra/bond/per/atom 1"
                " extra/special/per/atom 1";
@@ -1158,14 +1171,17 @@ TEST(PairStyle, single)
     }
 
     // create (only) two atoms
+
     command("mass * 1.0");
     command("create_atoms 1 single 0.0 -0.75  0.4 units box");
     command("create_atoms 2 single 1.5  0.25 -0.1 units box");
     command("set atom 1 charge -0.5");
     command("set atom 2 charge  0.5");
+    command("set atom 1 mol 1");
+    command("set atom 2 mol 2");
     command("special_bonds lj/coul 1.0 1.0 1.0");
 
-    if (molecular) {
+    if (molecular == Atom::MOLECULAR) {
         command("create_bonds single/bond 1 1 2");
         command("bond_style zero");
         command("bond_coeff 1 2.0");

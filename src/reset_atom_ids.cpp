@@ -1,6 +1,6 @@
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   http://lammps.sandia.gov, Sandia National Laboratories
+   https://lammps.sandia.gov/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -12,19 +12,19 @@
 ------------------------------------------------------------------------- */
 
 #include "reset_atom_ids.h"
-#include <mpi.h>
-#include <cstring>
+
 #include "atom.h"
 #include "atom_vec.h"
-#include "domain.h"
 #include "comm.h"
-#include "modify.h"
-#include "fix.h"
-#include "special.h"
-#include "memory.h"
+#include "domain.h"
 #include "error.h"
-#include "utils.h"
-#include "fmt/format.h"
+#include "fix.h"
+#include "memory.h"
+#include "modify.h"
+#include "special.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 
@@ -34,7 +34,6 @@ using namespace LAMMPS_NS;
 ResetIDs::AtomRvous *ResetIDs::sortrvous;
 static int compare_coords(const void *, const void *);
 #else
-#include "mergesort.h"
 // prototype for non-class function
 static int compare_coords(const int, const int, void *);
 #endif
@@ -79,7 +78,7 @@ void ResetIDs::command(int narg, char **arg)
   // create an atom map if one doesn't exist already
 
   int mapflag = 0;
-  if (atom->map_style == 0) {
+  if (atom->map_style == Atom::MAP_NONE) {
     mapflag = 1;
     atom->nghost = 0;
     atom->map_init();
@@ -139,12 +138,12 @@ void ResetIDs::command(int narg, char **arg)
   comm->forward_comm_array(1,newIDs);
 
   // loop over bonds, angles, etc and reset IDs in stored topology arrays
-  // only necessary for molecular = 1, not molecular = 2
+  // only necessary for molecular = Atom::MOLECULAR, not molecular = Atom::TEMPLATE
   // badcount = atom IDs that could not be found
 
   int badcount = 0;
 
-  if (atom->molecular == 1) {
+  if (atom->molecular == Atom::MOLECULAR) {
     int j,m;
     tagint oldID;
 
@@ -170,17 +169,17 @@ void ResetIDs::command(int narg, char **arg)
         for (j = 0; j < num_angle[i]; j++) {
           oldID = angle_atom1[i][j];
           m = atom->map(oldID);
-          if (m >= 0) angle_atom1[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) angle_atom1[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = angle_atom2[i][j];
           m = atom->map(oldID);
-          if (m >= 0) angle_atom2[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) angle_atom2[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = angle_atom3[i][j];
           m = atom->map(oldID);
-          if (m >= 0) angle_atom3[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) angle_atom3[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
         }
       }
@@ -196,22 +195,22 @@ void ResetIDs::command(int narg, char **arg)
         for (j = 0; j < num_dihedral[i]; j++) {
           oldID = dihedral_atom1[i][j];
           m = atom->map(oldID);
-          if (m >= 0) dihedral_atom1[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) dihedral_atom1[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = dihedral_atom2[i][j];
           m = atom->map(oldID);
-          if (m >= 0) dihedral_atom2[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) dihedral_atom2[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = dihedral_atom3[i][j];
           m = atom->map(oldID);
-          if (m >= 0) dihedral_atom3[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) dihedral_atom3[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = dihedral_atom4[i][j];
           m = atom->map(oldID);
-          if (m >= 0) dihedral_atom4[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) dihedral_atom4[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
         }
       }
@@ -227,22 +226,22 @@ void ResetIDs::command(int narg, char **arg)
         for (j = 0; j < num_improper[i]; j++) {
           oldID = improper_atom1[i][j];
           m = atom->map(oldID);
-          if (m >= 0) improper_atom1[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) improper_atom1[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = improper_atom2[i][j];
           m = atom->map(oldID);
-          if (m >= 0) improper_atom2[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) improper_atom2[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = improper_atom3[i][j];
           m = atom->map(oldID);
-          if (m >= 0) improper_atom3[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) improper_atom3[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
 
           oldID = improper_atom4[i][j];
           m = atom->map(oldID);
-          if (m >= 0) improper_atom4[i][j] = static_cast<tagint> (newIDs[m][0]);
+          if (m >= 0) improper_atom4[i][j] = (tagint) ubuf(newIDs[m][0]).i;
           else badcount++;
         }
       }
@@ -267,7 +266,7 @@ void ResetIDs::command(int narg, char **arg)
 
   // need to update exclusions with new atom IDs
 
-  if (atom->molecular == 1) {
+  if (atom->molecular == Atom::MOLECULAR) {
     Special special(lmp);
     special.build();
   }
@@ -276,7 +275,7 @@ void ResetIDs::command(int narg, char **arg)
 
   if (mapflag) {
     atom->map_delete();
-    atom->map_style = 0;
+    atom->map_style = Atom::MAP_NONE;
   }
 
   // clean up
@@ -369,9 +368,9 @@ void ResetIDs::sort()
   // bins are numbered from 0 to Nbins-1
 
   bigint nbins = (bigint) nbinx*nbiny*nbinz;
-  int nlo = nbins / nprocs;
-  int nhi = nlo + 1;
-  int nplo = nprocs - (nbins % nprocs);
+  bigint nlo = nbins / nprocs;
+  bigint nhi = nlo + 1;
+  bigint nplo = nprocs - (nbins % nprocs);
   bigint nbinlo = nplo*nlo;
 
   if (me < nplo) {
@@ -509,7 +508,7 @@ int ResetIDs::sort_bins(int n, char *inbuf,
     sortrvous = in;
     qsort(order,count[ibin],sizeof(int),compare_coords);
 #else
-    merge_sort(order,count[ibin],(void *) in,compare_coords);
+    utils::merge_sort(order,count[ibin],(void *) in,compare_coords);
 #endif
 
     head[ibin] = last[ibin] = -1;
