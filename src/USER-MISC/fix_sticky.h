@@ -76,24 +76,84 @@ class FixSticky : public Fix {
 
 /* ERROR/WARNING messages:
 
-E: Illegal fix sticky command: incorrect number of arguments.
+E: Illegal ... command
 
-Self-explanatory. Fix sticky requires 7 arguments.
+Self-explanatory.  Check the input script syntax and compare to the
+documentation for the command.  You can use -echo screen as a
+command-line option when running LAMMPS to see the offending line.
 
-E: Illegal fix sticky command: Nevery <= 0.
-
-Self-explanatory.
-
-E: Illegal fix sticky command: Cutoff <= 0.
+E: Invalid atom type in fix infect command
 
 Self-explanatory.
 
-E: Invalid atom type(s) in fix sticky command.
-
-Self-explanatory.Fix sticky only works for defined atom types.
-
-E: Fix sticky requires atom style sphere.
+E: Invalid bond type in fix infect command
 
 Self-explanatory.
+
+E: Cannot use fix infect with non-molecular systems
+
+Only systems with bonds that can be changed can be used.  Atom_style
+template does not qualify.
+
+E: Inconsistent iparam/jparam values in fix infect command
+
+If itype and jtype are the same, then their maxbond and newtype
+settings must also be the same.
+
+E: Fix infect cutoff is longer than pairwise cutoff
+
+This is not allowed because bond creation is done using the
+pairwise neighbor list.
+
+E: Fix infect angle type is invalid
+
+Self-explanatory.
+
+E: Fix infect dihedral type is invalid
+
+Self-explanatory.
+
+E: Fix infect improper type is invalid
+
+Self-explanatory.
+
+E: Cannot yet use fix infect with this improper style
+
+This is a current restriction in LAMMPS.
+
+E: Fix infect needs ghost atoms from further away
+
+This is because the fix needs to walk bonds to a certain distance to
+acquire needed info, The comm_modify cutoff command can be used to
+extend the communication range.
+
+E: New bond exceeded bonds per atom in fix infect
+
+See the read_data command for info on setting the "extra bond per
+atom" header value to allow for additional bonds to be formed.
+
+E: New bond exceeded special list size in fix infect
+
+See the special_bonds extra command for info on how to leave space in
+the special bonds list to allow for additional bonds to be formed.
+
+E: Fix infect induced too many angles/dihedrals/impropers per atom
+
+See the read_data command for info on setting the "extra angle per
+atom", etc header values to allow for additional angles, etc to be
+formed.
+
+E: Special list size exceeded in fix infect
+
+See the read_data command for info on setting the "extra special per
+atom" header value to allow for additional special values to be
+stored.
+
+W: Fix infect is used multiple times or with fix bond/break - may not work as expected
+
+When using fix infect multiple times or in combination with
+fix bond/break, the individual fix instances do not share information
+about changes they made at the same time step and thus it may result
+in unexpected behavior.
 
 */

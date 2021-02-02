@@ -45,6 +45,9 @@ static const char cite_fix_sticky[] =
   " pages =   {211--217}\n"
   "}\n\n";
 
+#define BIG 1.0e20
+#define DELTA 16
+
 /* ---------------------------------------------------------------------- */
 /* What this fix should do:
    1) check atom type sphere
@@ -65,25 +68,30 @@ FixSticky::FixSticky(LAMMPS *lmp, int narg, char **arg) :
   if (lmp->citeme) lmp->citeme->add(cite_fix_sticky);
 
   if (narg != 7) error->all(FLERR,"Illegal fix sticky command: "
-                           "incorrect number of arguments.");
+                           "incorrect number of arguments");
 
 //  MPI_Comm_rank(world,&me); //jjk not sure if needed
 
-  nevery = force->inumeric(FLERR,arg[3]);
-  if (nevery <= 0) error->all(FLERR,"Illegal fix sticky command: Nevery <= 0.");
+//  nevery = force->inumeric(FLERR,arg[3]);
+  nevery = utils::inumeric(FLERR,arg[3],false,lmp);
+  if (nevery <= 0) error->all(FLERR,"Illegal fix sticky command");
 
-  iatomtype = force->inumeric(FLERR,arg[4]);
-  jatomtype = force->inumeric(FLERR,arg[5]);
+//  iatomtype = force->inumeric(FLERR,arg[4]);
+  iatomtype = utils::inumeric(FLERR,arg[4],false,lmp);
+//  jatomtype = force->inumeric(FLERR,arg[5]);
+  jatomtype = utils::inumeric(FLERR,arg[5],false,lmp);
+//  double cutoff = force->numeric(FLERR,arg[6]);
+  double cutoff = utils::numeric(FLERR,arg[6],false,lmp);
   cutoff = atof(arg[6]);
-  if (cutoff <= 0.0) error->all(FLERR,"Illegal fix sticky command: Cutoff <= 0.");
+  if (cutoff < 0.0) error->all(FLERR,"Illegal fix sticky command");
 
   if (iatomtype < 1 || iatomtype > atom->ntypes ||
       jatomtype < 1 || jatomtype > atom->ntypes ||
 	  iatomtype == jatomtype)
-    error->all(FLERR,"Invalid atom type(s) in fix sticky command.");
+    error->all(FLERR,"Invalid atom type(s) in fix sticky command");
 
   if (!atom->sphere_flag)
-    error->all(FLERR,"Fix sticky requires atom style sphere.");
+    error->all(FLERR,"Fix sticky requires atom style sphere");
   scalar_flag = 1;
   totalSwap = 0;
 }
@@ -143,6 +151,8 @@ void FixSticky::post_integrate()
   if(comm->me==0){
 	totalSwap+=globalSwap;
   }
+  // DEBUG
+//  print_bb();
 }
 /*
 double FixSticky::memory_usage()
@@ -155,5 +165,7 @@ double FixSticky::memory_usage()
 
 void FixSticky::print_bb()
 {
+    printf("\n");
+    printf("domain->boxlo = %f, LJdiameter2 = %f/n",domain->boxlo[2],cutoff);
 }
 

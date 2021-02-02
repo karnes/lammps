@@ -46,6 +46,8 @@ static const char cite_fix_infect[] =
   " pages =   {211--217}\n"
   "}\n\n";
 
+#define BIG 1.0e20
+#define DELTA 16
 
 /* ---------------------------------------------------------------------- */
 /* What this fix should do:
@@ -68,26 +70,30 @@ FixInfect::FixInfect(LAMMPS *lmp, int narg, char **arg) :
   if (lmp->citeme) lmp->citeme->add(cite_fix_infect);
 
   if (narg != 7) error->all(FLERR,"Illegal fix infect command: "
-                           "incorrect number of arguments.");
+                           "incorrect number of arguments");
 
 //  MPI_Comm_rank(world,&me); //jjk not sure if needed
 
-  nevery = force->inumeric(FLERR,arg[3]);
-  if (nevery <= 0) error->all(FLERR,"Illegal fix infect command: Nevery <= 0.");
+//  nevery = force->inumeric(FLERR,arg[3]);
+  nevery = utils::inumeric(FLERR,arg[3],false,lmp);
+  if (nevery <= 0) error->all(FLERR,"Illegal fix infect command");
 
-  iatomtype = force->inumeric(FLERR,arg[4]);
-  jatomtype = force->inumeric(FLERR,arg[5]);
-  double cutoff = force->numeric(FLERR,arg[6]);
+//  iatomtype = force->inumeric(FLERR,arg[4]);
+  iatomtype = utils::inumeric(FLERR,arg[4],false,lmp);
+//  jatomtype = force->inumeric(FLERR,arg[5]);
+  jatomtype = utils::inumeric(FLERR,arg[5],false,lmp);
+//  double cutoff = force->numeric(FLERR,arg[6]);
+  double cutoff = utils::numeric(FLERR,arg[6],false,lmp);
   cutsq = cutoff*cutoff;
 
   if (iatomtype < 1 || iatomtype > atom->ntypes ||
       jatomtype < 1 || jatomtype > atom->ntypes ||
 	  iatomtype == jatomtype)
-    error->all(FLERR,"Invalid atom type(s) in fix infect command.");
-  if (cutoff < 0.0) error->all(FLERR,"Illegal fix infect command: Negative cutoff distance.");
+    error->all(FLERR,"Invalid atom type(s) in fix infect command");
+  if (cutoff < 0.0) error->all(FLERR,"Illegal fix infect command");
 
   if (!atom->sphere_flag)
-    error->all(FLERR,"Fix infect requires atom style sphere.");
+    error->all(FLERR,"Fix infect requires atom style sphere");
   
 //  atom->add_callback(0); //jjk don't know what this is
 //  countflag = 0; // jjk don't know what this is
@@ -105,8 +111,7 @@ FixInfect::FixInfect(LAMMPS *lmp, int narg, char **arg) :
 
   scalar_flag = 1;
   totalInfect = globalInfect = localInfect = 0;
-// Debug printout
-  // printf("Nevery = %d i_type = %d j_type = %d cutoff = %e\n",nevery,iatomtype,jatomtype,cutoff);
+  printf("Nevery = %d i_type = %d j_type = %d cutoff = %e\n",nevery,iatomtype,jatomtype,cutoff);
 }
 
 /* ---------------------------------------------------------------------- */
@@ -148,7 +153,7 @@ void FixInfect::init()
 
   if (force->pair == NULL || cutsq > force->pair->cutsq[iatomtype][jatomtype] ||
     cutsq > force->pair->cutsq[iatomtype][iatomtype])
-    error->all(FLERR,"Fix infect cutoff is longer than pairwise cutoff.");
+    error->all(FLERR,"Fix infect cutoff is longer than pairwise cutoff");
 
   // need a half neighbor list, built every Nevery steps
 
@@ -255,6 +260,13 @@ void FixInfect::post_integrate()
   int nlocal = atom->nlocal;
   int nall = atom->nlocal + atom->nghost;
 */
+  /*
+  for (i = 0; i < nall; i++) {
+    partner[i] = 0;
+    finalpartner[i] = 0;
+    distsq[i] = BIG;
+  }
+*/
   // loop over neighbors of my atoms
   // each atom sets one closest eligible partner atom ID
   localInfect = 0;
@@ -303,10 +315,90 @@ void FixInfect::post_integrate()
     }
   }
 
+  // reverse comm of distsq and partner
+  // not needed if newton_pair off since I,J pair was seen by both procs
+/*
+  commflag = 2;
+  if (force->newton_pair) comm->reverse_comm_fix(this);
+*/
+  // each atom now knows its winning partner
+  // for prob check, generate random value for each atom with a bond partner
+  // forward comm of partner and random value, so ghosts have it
+/*
+  if (fraction < 1.0) {
+    for (i = 0; i < nlocal; i++)
+      if (partner[i]) probability[i] = random->uniform();
+  }
+*/
+/*
+  commflag = 2;
+  comm->forward_comm_fix(this,2);
+*/
+  // create bonds for atoms I own
+  // only if both atoms list each other as winning bond partner
+  //   and probability constraint is satisfied
+  // if other atom is owned by another proc, it should do same thing
+/*
+  int **bond_type = atom->bond_type;
+  int newton_bond = force->newton_bond;
+*/
+/*
+  ncreate = 0;
+  for (i = 0; i < nlocal; i++) {
+    if (partner[i] == 0) continue;
+    j = atom->map(partner[i]);
+    if (partner[j] != tag[i]) continue;
+*/
+    // apply probability constraint using RN for atom with smallest ID
+/*
+    if (fraction < 1.0) {
+      if (tag[i] < tag[j]) {
+        if (probability[i] >= fraction) continue;
+      } else {
+        if (probability[j] >= fraction) continue;
+      }
+    }
+*/
+    // if newton_bond is set, only store with I or J
+    // if not newton_bond, store bond with both I and J
+    // atom J will also do this consistently, whatever proc it is on
+/*
+    if (!newton_bond || tag[i] < tag[j]) {
+      if (num_bond[i] == atom->bond_per_atom)
+        error->one(FLERR,"New bond exceeded bonds per atom in fix infect");
+      bond_type[i][num_bond[i]] = btype;
+      bond_atom[i][num_bond[i]] = tag[j];
+      num_bond[i]++;
+    }
+*/
+    // increment bondcount, convert atom to new type if limit reached
+    // atom J will also do this, whatever proc it is on
+
+    // store final created bond partners and count the created bond once
+/*
+    finalpartner[i] = tag[j];
+    finalpartner[j] = tag[i];
+    if (tag[i] < tag[j]) ncreate++;
+  }
+*/
+  // tally stats
+
   MPI_Allreduce(&localInfect,&globalInfect,1,MPI_INT,MPI_SUM,world);
   if(comm->me==0){
     totalInfect+=globalInfect;
   }
+//  	createcounttotal += createcount;//jjk not sure about this one
+
+  // trigger reneighboring if any bonds were formed
+  // this insures neigh lists will immediately reflect the topology changes
+  // done if any bonds created
+
+//  if (createcount) next_reneighbor = update->ntimestep;
+//  if (!createcount) return;
+
+
+  // DEBUG
+  //print_bb();
 }
 
 /* ---------------------------------------------------------------------- */
